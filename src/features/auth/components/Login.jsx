@@ -244,7 +244,7 @@ const LoginForm = ({ setView }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const response = await api.post('/login', {
+      const response = await api.post('/api/login', {
         email: form.email,
         password: form.password
       })
@@ -437,7 +437,7 @@ const RegisterForm = ({ setView }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      await api.post('/users', {
+      await api.post('/api/users', {
         username: form.usuario,
         email: form.correo,
         password: form.password
