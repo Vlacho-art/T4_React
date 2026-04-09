@@ -8,7 +8,7 @@ import axios from 'axios';
 const rawBackendUrl = import.meta.env.VITE_API_URL?.trim();
 const backendUrl = rawBackendUrl && rawBackendUrl !== '.'
   ? rawBackendUrl.replace(/\/+$|\/api$/g, '').trim()
-  : 'https://t4-backend-qikc.onrender.com';
+  : 'https://t4-backend-lf0b.onrender.com';
 
 const api = axios.create({
     baseURL: `${backendUrl}/api`,
