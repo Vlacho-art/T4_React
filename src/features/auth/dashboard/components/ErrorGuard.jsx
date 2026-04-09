@@ -36,7 +36,7 @@ export const ErrorGuard = () => {
     user_agent: ""
   });
 
-  const API = "/api/errors";
+  const API = "/errors";
 
   // CARGAR DATOS
   const getLogs = async () => {

@@ -6,11 +6,11 @@ import axios from 'axios';
 * - headers comunes
 */
 const backendUrl = import.meta.env.VITE_API_URL
-  ? import.meta.env.VITE_API_URL.replace(/\/$/, '')
+  ? import.meta.env.VITE_API_URL.replace(/\/$/, '').replace(/\/api$/, '')
   : 'https://t4-backend-qikc.onrender.com';
 
 const api = axios.create({
-    baseURL: backendUrl,
+    baseURL: `${backendUrl}/api`,
     headers: { 'Content-Type': 'application/json' }
 });
 

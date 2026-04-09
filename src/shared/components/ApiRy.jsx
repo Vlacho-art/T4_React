@@ -1,18 +1,18 @@
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CardMedia,
-  FormControl,
-  FormHelperText,
-  InputLabel,
-  MenuItem,
-  Select,
-  Tab,
-  Tabs,
-  TextField,
-  Typography
+    Box,
+    Button,
+    Card,
+    CardContent,
+    CardMedia,
+    FormControl,
+    FormHelperText,
+    InputLabel,
+    MenuItem,
+    Select,
+    Tab,
+    Tabs,
+    TextField,
+    Typography
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import api from "../../features/auth/api/axios";
@@ -51,7 +51,7 @@ export const ApiRyc = () => {
   useEffect(() => {
     const loadLocalCharacters = async () => {
       try {
-        const res = await api.get('/api');
+        const res = await api.get('/');
         setPersonajesCreados(res.data);
       } catch (err) {
         console.error('Error loading local characters:', err);
@@ -436,13 +436,13 @@ export const ApiRyc = () => {
             try {
               if (editingId) {
                 // Update
-                await api.put(`/api/${editingId}`, nuevoPersonaje);
+                await api.put(`/${editingId}`, nuevoPersonaje);
               } else {
                 // Create
-                await api.post('/api', nuevoPersonaje);
+                await api.post('/', nuevoPersonaje);
               }
               // Reload
-              const res = await api.get('/api');
+              const res = await api.get('/');
               setPersonajesCreados(res.data);
               setEditingId(null);
             } catch (err) {
@@ -530,8 +530,8 @@ export const ApiRyc = () => {
                     color='error'
                     onClick={async () => {
                       try {
-                        await api.delete(`/api/${personaje._id}`);
-                        const res = await api.get('/api');
+                        await api.delete(`/${personaje._id}`);
+                        const res = await api.get('/');
                         setPersonajesCreados(res.data);
                       } catch (err) {
                         console.error('Error deleting character:', err);
