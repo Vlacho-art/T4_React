@@ -20,7 +20,7 @@ Este proyecto es una aplicación web moderna construida utilizando React, Vite y
 
 ## 📦 Instalación
 Para comenzar con el proyecto, sigue estos pasos:
-1. Clona el repositorio usando `git clone https://github.com/your-username/your-repo-name.git`
+1. Clona el repositorio usando `git clone https://github.com/Vlacho-art/T4_React.git`
 2. Instala las dependencias con `npm install`
 3. Inicia el servidor de desarrollo con `npm run dev`
 4. Abre la aplicación en tu navegador en `http://localhost:3000`
