@@ -13,7 +13,7 @@ export const Footer = () => {
     >
       <Toolbar sx={{ justifyContent: 'center' }}>
         <Typography variant="body2" sx={{ color: 'rgba(230, 233, 245, 0.8)' }}>
-          © 2024 ErrorGuard. Todos los derechos reservados.
+          © 2024 Spendora. Todos los derechos reservados.
         </Typography>
       </Toolbar>
     </Box>
