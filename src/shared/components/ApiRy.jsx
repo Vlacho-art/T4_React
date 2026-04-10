@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import api from "../../features/auth/api/axios";
 
 export const ApiRyc = () => {
+  const STORAGE_KEY = "apiry-created-characters";
   const [characters, setCharacters] = useState([]);
   const [pages, setPages] = useState(1);
   const [info, setInfo] = useState({});
@@ -30,6 +31,7 @@ export const ApiRyc = () => {
   const [especie, setEspecie] = useState("");
   const [personajesCreados, setPersonajesCreados] = useState([]);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [errors, setErrors] = useState({
     nombre: "",
     imagen: "",
@@ -37,6 +39,36 @@ export const ApiRyc = () => {
     especie: ""
   });
   const [editingId, setEditingId] = useState(null);
+
+  const extractCreatedCharacters = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.characters)) return payload.characters;
+    if (Array.isArray(payload?.personajes)) return payload.personajes;
+    if (Array.isArray(payload?.personajesCreados)) return payload.personajesCreados;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.docs)) return payload.docs;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.results)) return payload.results;
+    return [];
+  };
+
+  const extractCreatedCharacter = (payload) => {
+    if (!payload || Array.isArray(payload)) return null;
+    if (payload.character && typeof payload.character === "object") return payload.character;
+    if (payload.personaje && typeof payload.personaje === "object") return payload.personaje;
+    if (payload.data && !Array.isArray(payload.data) && typeof payload.data === "object") return payload.data;
+    if (payload.doc && typeof payload.doc === "object") return payload.doc;
+    if (payload._id || payload.id) return payload;
+    return null;
+  };
+
+  const buildLocalCharacter = (character, id = null) => ({
+    _id: id || `local-${Date.now()}`,
+    name: character.name,
+    image: character.image,
+    status: character.status,
+    species: character.species
+  });
 
   useEffect(() => {
     fetch(`https://rickandmortyapi.com/api/character?page=${pages}`)
@@ -49,12 +81,26 @@ export const ApiRyc = () => {
   }, [pages]);
 
   useEffect(() => {
+    const cachedCharacters = localStorage.getItem(STORAGE_KEY);
+    if (cachedCharacters) {
+      setPersonajesCreados(JSON.parse(cachedCharacters));
+    }
+
     const loadLocalCharacters = async () => {
       try {
         const res = await api.get('/');
-        setPersonajesCreados(res.data);
+        const nextCharacters = extractCreatedCharacters(res.data);
+        setPersonajesCreados((prev) => {
+          const parsedCache = cachedCharacters ? JSON.parse(cachedCharacters) : [];
+          const resolvedCharacters = nextCharacters.length > 0 ? nextCharacters : (prev.length > 0 ? prev : parsedCache);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedCharacters));
+          return resolvedCharacters;
+        });
+        setLoadError("");
       } catch (err) {
         console.error('Error loading local characters:', err);
+        setPersonajesCreados(cachedCharacters ? JSON.parse(cachedCharacters) : []);
+        setLoadError(err.response?.data?.message || err.message || 'No se pudieron cargar los personajes creados.');
       }
     };
     loadLocalCharacters();
@@ -433,21 +479,63 @@ export const ApiRyc = () => {
               species: especie
             };
 
+            const fallbackCharacter = buildLocalCharacter(nuevoPersonaje, editingId);
+
             try {
               if (editingId) {
                 // Update
-                await api.put(`/${editingId}`, nuevoPersonaje);
+                const res = await api.put(`/${editingId}`, nuevoPersonaje);
+                const updatedCharacter = extractCreatedCharacter(res.data) || fallbackCharacter;
+                if (updatedCharacter) {
+                  setPersonajesCreados((prev) => {
+                    const nextCharacters = prev.map((personaje) =>
+                      personaje._id === editingId || personaje.id === editingId ? updatedCharacter : personaje
+                    );
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCharacters));
+                    return nextCharacters;
+                  });
+                }
               } else {
                 // Create
-                await api.post('/', nuevoPersonaje);
+                const res = await api.post('/', nuevoPersonaje);
+                const createdCharacter = extractCreatedCharacter(res.data) || fallbackCharacter;
+                if (createdCharacter) {
+                  setPersonajesCreados((prev) => {
+                    const nextCharacters = [createdCharacter, ...prev];
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCharacters));
+                    return nextCharacters;
+                  });
+                }
               }
               // Reload
               const res = await api.get('/');
-              setPersonajesCreados(res.data);
+              const nextCharacters = extractCreatedCharacters(res.data);
+              setPersonajesCreados((prev) => {
+                const resolvedCharacters = nextCharacters.length > 0 ? nextCharacters : prev;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedCharacters));
+                return resolvedCharacters;
+              });
               setEditingId(null);
+              setLoadError("");
             } catch (err) {
               console.error('Error saving character:', err);
-              setError('Error al guardar el personaje.');
+              if (editingId) {
+                setPersonajesCreados((prev) => {
+                  const nextCharacters = prev.map((personaje) =>
+                    personaje._id === editingId || personaje.id === editingId ? fallbackCharacter : personaje
+                  );
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCharacters));
+                  return nextCharacters;
+                });
+              } else {
+                setPersonajesCreados((prev) => {
+                  const nextCharacters = [fallbackCharacter, ...prev];
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCharacters));
+                  return nextCharacters;
+                });
+              }
+              setEditingId(null);
+              setError(err.response?.data?.message || err.message || 'El personaje se guardo solo de forma local.');
             }
 
             setNombre("");
@@ -460,6 +548,12 @@ export const ApiRyc = () => {
         >
           {editingId ? 'Actualizar Personaje' : 'Agregar Personaje'}
         </Button>
+
+        {loadError && (
+          <Typography sx={{ color: '#F59E0B', mt: 2, fontWeight: 'bold' }}>
+            {loadError}
+          </Typography>
+        )}
 
         {/* LISTA */}
         <Box
@@ -474,6 +568,12 @@ export const ApiRyc = () => {
             gap: 2
           }}
         >
+          {personajesCreados.length === 0 && (
+            <Typography sx={{ color: '#A5ADCC' }}>
+              Aun no hay personajes creados para mostrar.
+            </Typography>
+          )}
+
           {personajesCreados.map((personaje, i) => (
             <Card
               key={i}
@@ -516,7 +616,9 @@ export const ApiRyc = () => {
                     color='info'
                     onClick={() => {
                       setNombre(personaje.name);
-                      setImagen(personaje.image);                      setImagenFile(null);                      setEstado(personaje.status);
+                      setImagen(personaje.image);
+                      setImagenFile(null);
+                      setEstado(personaje.status);
                       setEspecie(personaje.species);
                       setEditingId(personaje._id);
                       setError('');
@@ -532,7 +634,16 @@ export const ApiRyc = () => {
                       try {
                         await api.delete(`/${personaje._id}`);
                         const res = await api.get('/');
-                        setPersonajesCreados(res.data);
+                        const nextCharacters = extractCreatedCharacters(res.data);
+                        setPersonajesCreados((prev) => {
+                          const resolvedCharacters =
+                            nextCharacters.length > 0
+                              ? nextCharacters
+                              : prev.filter((item) => item._id !== personaje._id && item.id !== personaje.id);
+                          localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedCharacters));
+                          return resolvedCharacters;
+                        });
+                        setLoadError("");
                       } catch (err) {
                         console.error('Error deleting character:', err);
                       }

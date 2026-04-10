@@ -1,5 +1,6 @@
 import { Delete, Edit } from "@mui/icons-material";
 import {
+    Alert,
     Box,
     Button,
     Divider,
@@ -13,6 +14,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 
 export const ErrorGuard = () => {
+  const STORAGE_KEY = "error-guard-logs";
   const [form, setForm] = useState({
     codigo: "",
     mensaje: "",
@@ -27,6 +29,7 @@ export const ErrorGuard = () => {
   const [logs, setLogs] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [requestError, setRequestError] = useState("");
   const [formErrors, setFormErrors] = useState({
     codigo: "",
     mensaje: "",
@@ -38,33 +41,55 @@ export const ErrorGuard = () => {
 
   const API = "/errors";
 
+  const extractLogs = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.logs)) return payload.logs;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.errors)) return payload.errors;
+    return [];
+  };
+
+  const extractLog = (payload) => {
+    if (!payload || Array.isArray(payload)) return null;
+    if (payload.log && typeof payload.log === "object") return payload.log;
+    if (payload.data && !Array.isArray(payload.data) && typeof payload.data === "object") return payload.data;
+    if (payload.error && typeof payload.error === "object") return payload.error;
+    if (payload._id || payload.id) return payload;
+    return null;
+  };
+
   // CARGAR DATOS
-  const getLogs = async () => {
+  const getLogs = async ({ preserveExisting = false } = {}) => {
     try {
       const res = await api.get(API);
-      setLogs(res.data);
+      const nextLogs = extractLogs(res.data);
+      setLogs((prev) => {
+        const resolvedLogs = preserveExisting && nextLogs.length === 0 ? prev : nextLogs;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedLogs));
+        return resolvedLogs;
+      });
+      setRequestError("");
     } catch (error) {
       console.log(error);
+      if (!preserveExisting) {
+        const cachedLogs = localStorage.getItem(STORAGE_KEY);
+        setLogs(cachedLogs ? JSON.parse(cachedLogs) : []);
+      }
+      setRequestError(error.response?.data?.message || error.message || "No se pudieron cargar los logs");
     }
   };
 
   useEffect(() => {
-    let mounted = true;
+    const cachedLogs = localStorage.getItem(STORAGE_KEY);
+    if (cachedLogs) {
+      setLogs(JSON.parse(cachedLogs));
+    }
 
     const fetchLogs = async () => {
-      try {
-        const res = await api.get(API);
-        if (mounted) setLogs(res.data);
-      } catch (error) {
-        console.log(error);
-      }
+      await getLogs();
     };
 
     fetchLogs();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
 
 
@@ -110,15 +135,35 @@ export const ErrorGuard = () => {
     if (!validateForm()) return;
     try {
       if (editingId) {
-        await api.put(`${API}/${editingId}`, form);
+        const res = await api.put(`${API}/${editingId}`, form);
+        const updatedLog = extractLog(res.data);
+
+        if (updatedLog) {
+          setLogs((prev) => {
+            const nextLogs = prev.map((log) => (log._id === editingId || log.id === editingId ? updatedLog : log));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(nextLogs));
+            return nextLogs;
+          });
+        }
       } else {
-        await api.post(API, form);
+        const res = await api.post(API, form);
+        const createdLog = extractLog(res.data);
+
+        if (createdLog) {
+          setLogs((prev) => {
+            const nextLogs = [createdLog, ...prev];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(nextLogs));
+            return nextLogs;
+          });
+        }
       }
 
-      await getLogs();
+      await getLogs({ preserveExisting: true });
       resetForm();
+      setRequestError("");
     } catch (error) {
       console.log(error);
+      setRequestError(error.response?.data?.message || error.message || "No se pudo guardar el log");
     }
   };
 
@@ -152,6 +197,11 @@ export const ErrorGuard = () => {
 
     try {
       await api.delete(`${API}/${id}`);
+      setLogs((prev) => {
+        const nextLogs = prev.filter((log) => log._id !== id && log.id !== id);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextLogs));
+        return nextLogs;
+      });
       await getLogs();
     } catch (error) {
       console.log(error);
@@ -340,6 +390,12 @@ export const ErrorGuard = () => {
         <Typography variant="h6" mb={2}>
           Logs registrados
         </Typography>
+
+        {requestError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {requestError}
+          </Alert>
+        )}
 
         <TextField
           label="Buscar logs"
