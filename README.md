@@ -54,7 +54,7 @@ Para usar la aplicación, simplemente navega a `http://localhost:3000` en tu nav
 
 #📝 Licencia
 
-Este proyecto está bajo la licencia MIT.
+© 2024 Spendora. Todos los derechos reservados de Vladimir Durango Vargas.
 
 #📬 Contacto
 
